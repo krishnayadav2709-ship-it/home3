@@ -1,0 +1,156 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f3f6f8;
+  color: #202124;
+}
+
+button, input, select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: #176b45;
+  color: white;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.app {
+  max-width: 1200px;
+  margin: auto;
+  padding: 24px;
+}
+
+.topbar, .section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+h1, h2, h3, p {
+  margin-top: 0;
+}
+
+.topbar p, .panel p {
+  color: #626a73;
+}
+
+.panel {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  margin: 18px 0;
+  box-shadow: 0 2px 8px #00000008;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+input, select {
+  padding: 10px;
+  border: 1px solid #d4d8dd;
+  border-radius: 8px;
+  max-width: 100%;
+}
+
+.notice {
+  background: #e4f4e9;
+  padding: 12px;
+  border-radius: 8px;
+  margin: 12px 0;
+}
+
+.notice.error {
+  background: #fde8e7;
+  color: #a52222;
+}
+
+.inbox {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 18px;
+}
+
+.customer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.customer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  background: white;
+  color: #202124;
+  border: 1px solid #ddd;
+  text-align: left;
+}
+
+.customer span, .customer small {
+  color: #626a73;
+  overflow-wrap: anywhere;
+}
+
+.customer.active {
+  background: #e4f4e9;
+  border-color: #176b45;
+}
+
+.conversation {
+  min-width: 0;
+  background: #f8fafb;
+  padding: 14px;
+  border-radius: 10px;
+}
+
+.message {
+  padding: 12px;
+  border-radius: 10px;
+  background: #e9ecef;
+  margin: 10px 0;
+  overflow-wrap: anywhere;
+}
+
+.message.outgoing {
+  background: #d9f5df;
+}
+
+.message p {
+  margin-bottom: 8px;
+}
+
+.message small {
+  color: #626a73;
+}
+
+@media (max-width: 700px) {
+  .app {
+    padding: 12px;
+  }
+
+  .inbox {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar {
+    align-items: flex-start;
+  }
+}

@@ -64,8 +64,11 @@ router.get("/", (req, res) => {
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
   const verifyToken = process.env.VERIFY_TOKEN;
+  const tokenMatches = safeEqual(token, verifyToken);
+  const challengePresent = typeof challenge === "string" && Boolean(challenge);
 
   if (!verifyToken) {
+    console.error("Webhook verification rejected: VERIFY_TOKEN is not configured");
     return res.status(503).json({
       error: "Webhook verify token is not configured"
     });
@@ -73,13 +76,18 @@ router.get("/", (req, res) => {
 
   if (
     mode !== "subscribe" ||
-    !safeEqual(token, verifyToken) ||
-    typeof challenge !== "string" ||
-    !challenge
+    !tokenMatches ||
+    !challengePresent
   ) {
+    console.warn("Webhook verification rejected", {
+      modeIsSubscribe: mode === "subscribe",
+      tokenMatches,
+      challengePresent
+    });
     return res.sendStatus(403);
   }
 
+  console.info("Webhook verification challenge accepted");
   return res.status(200).type("text/plain").send(challenge);
 });
 

@@ -44,6 +44,39 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "OK", message: "Backend running" });
 });
 
+app.get("/api/config/status", (req, res) => {
+  const missingWhatsAppFields = [];
+
+  if (!process.env.WHATSAPP_TOKEN) {
+    missingWhatsAppFields.push("WHATSAPP_TOKEN");
+  }
+  if (!process.env.PHONE_NUMBER_ID) {
+    missingWhatsAppFields.push("PHONE_NUMBER_ID");
+  }
+  if (!/^v\d+\.\d+$/.test(process.env.GRAPH_API_VERSION || "")) {
+    missingWhatsAppFields.push("GRAPH_API_VERSION");
+  }
+
+  const missingWebhookFields = [];
+  if (!process.env.VERIFY_TOKEN) {
+    missingWebhookFields.push("VERIFY_TOKEN");
+  }
+  if (!process.env.APP_SECRET) {
+    missingWebhookFields.push("APP_SECRET");
+  }
+
+  res.json({
+    whatsappApi: {
+      configured: missingWhatsAppFields.length === 0,
+      missing: missingWhatsAppFields
+    },
+    webhook: {
+      configured: missingWebhookFields.length === 0,
+      missing: missingWebhookFields
+    }
+  });
+});
+
 app.use("/api/customers", require("./routes/customer"));
 app.use("/api/campaigns", require("./routes/campaigns"));
 app.use("/webhook", require("./routes/webhook"));

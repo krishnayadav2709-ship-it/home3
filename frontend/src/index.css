@@ -84,6 +84,50 @@ h1, h2, h3, p {
   gap: 10px;
 }
 
+.form-field {
+  display: grid;
+  gap: 6px;
+}
+
+.form-field span {
+  color: #626a73;
+  font-size: 0.9rem;
+}
+
+.setup-status {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.setup-status > div {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+}
+
+.status-ready {
+  color: #176b45;
+}
+
+.status-missing {
+  color: #a52222;
+  overflow-wrap: anywhere;
+}
+
+.field-hint {
+  font-size: 0.9rem;
+}
+
+.field-hint code {
+  background: #f0f2f4;
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+
 input, select {
   padding: 10px;
   border: 1px solid #d4d8dd;

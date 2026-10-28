@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   getCustomers,
+  getConfigStatus,
   getMessages,
   importCSV,
   sendCampaign
@@ -11,6 +12,7 @@ export default function App() {
   const [customers, setCustomers] = useState([]);
   const [selected, setSelected] = useState("");
   const [messages, setMessages] = useState([]);
+  const [configStatus, setConfigStatus] = useState(null);
   const [file, setFile] = useState(null);
   const [template, setTemplate] = useState("");
   const [language, setLanguage] = useState("en_US");
@@ -40,6 +42,9 @@ export default function App() {
 
   useEffect(() => {
     refresh();
+    getConfigStatus()
+      .then(setConfigStatus)
+      .catch(e => setError(e.message));
   }, []);
 
   async function handleImport(e) {
@@ -144,6 +149,52 @@ export default function App() {
         </dl>
       </section>
 
+      <section className="panel" aria-labelledby="whatsapp-setup-heading">
+        <div className="section-heading">
+          <h2 id="whatsapp-setup-heading">WhatsApp setup</h2>
+          <span>Credentials stay on the backend</span>
+        </div>
+        <p>
+          Never enter access tokens or app secrets in this page. Configure
+          them in the backend hosting environment.
+        </p>
+        <div className="setup-status">
+          <div>
+            <strong>WhatsApp Cloud API</strong>
+            {configStatus ? (
+              configStatus.whatsappApi.configured ? (
+                <span className="status-ready">Configured</span>
+              ) : (
+                <span className="status-missing">
+                  Missing: {configStatus.whatsappApi.missing.join(", ")}
+                </span>
+              )
+            ) : (
+              <span>Checking backend configuration…</span>
+            )}
+          </div>
+          <div>
+            <strong>Webhook verification</strong>
+            {configStatus ? (
+              configStatus.webhook.configured ? (
+                <span className="status-ready">Configured</span>
+              ) : (
+                <span className="status-missing">
+                  Missing: {configStatus.webhook.missing.join(", ")}
+                </span>
+              )
+            ) : (
+              <span>Checking backend configuration…</span>
+            )}
+          </div>
+        </div>
+        <p className="field-hint">
+          Set missing values in the backend service environment, then redeploy.
+          The frontend only needs <code>VITE_API_URL</code> set to your backend
+          URL ending in <code>/api</code>.
+        </p>
+      </section>
+
       {error && <div className="notice error">{error}</div>}
       {result && <div className="notice">{result}</div>}
 
@@ -169,23 +220,36 @@ export default function App() {
         <p>
           Only send approved templates to customers who have consented.
         </p>
+        <p className="field-hint">
+          Recipients: {customers.filter(customer => customer.optedIn).length} opted-in
+          customers. Only approved template name and language are needed here;
+          API credentials are stored on the backend.
+        </p>
 
         <form className="actions" onSubmit={handleCampaign}>
-          <input
-            value={template}
-            onChange={e => setTemplate(e.target.value)}
-            placeholder="Approved template name"
-            required
-          />
+          <label className="form-field">
+            <span>Approved template name</span>
+            <input
+              value={template}
+              onChange={e => setTemplate(e.target.value)}
+              placeholder="e.g. order_update"
+              pattern="[a-z0-9_]+"
+              title="Use the approved template name with lowercase letters, numbers, and underscores."
+              required
+            />
+          </label>
 
-          <select
-            value={language}
-            onChange={e => setLanguage(e.target.value)}
-          >
-            <option value="en_US">English (US)</option>
-            <option value="en_GB">English (UK)</option>
-            <option value="hi">Hindi</option>
-          </select>
+          <label className="form-field">
+            <span>Template language</span>
+            <select
+              value={language}
+              onChange={e => setLanguage(e.target.value)}
+            >
+              <option value="en_US">English (US)</option>
+              <option value="en_GB">English (UK)</option>
+              <option value="hi">Hindi</option>
+            </select>
+          </label>
 
           <button disabled={busy || !template.trim()}>
             {busy ? "Please wait..." : "Send campaign"}

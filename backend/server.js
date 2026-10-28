@@ -16,7 +16,22 @@ if (process.env.DNS_SERVERS?.trim()) {
 
 const app = express();
 
-app.use(cors({ origin: process.env.CLIENT_URL }));
+const allowedOrigins = new Set(
+  (process.env.CLIENT_URL || "")
+    .split(",")
+    .map(origin => origin.trim().replace(/\/+$/, ""))
+    .filter(Boolean)
+);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.has(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error("Origin is not allowed by CORS"));
+  }
+}));
 
 app.use(express.json({
   limit: "1mb",

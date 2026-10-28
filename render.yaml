@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: whatsapp-bulk-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CLIENT_URL
+        value: https://${{whatsapp-bulk-frontend.host}}
+      - key: MONGODB_URI
+        sync: false
+      - key: WHATSAPP_TOKEN
+        sync: false
+      - key: PHONE_NUMBER_ID
+        sync: false
+      - key: GRAPH_API_VERSION
+        sync: false
+      - key: VERIFY_TOKEN
+        generateValue: true
+      - key: APP_SECRET
+        sync: false
+
+  - type: web
+    name: whatsapp-bulk-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci --include=dev && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://${{whatsapp-bulk-backend.host}}/api

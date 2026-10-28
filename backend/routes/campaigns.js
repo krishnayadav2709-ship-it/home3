@@ -14,6 +14,12 @@ router.post("/send-template", async (req, res) => {
     });
   }
 
+  if (!["en_US", "en_GB", "hi"].includes(language)) {
+    return res.status(400).json({
+      error: "Select a supported template language"
+    });
+  }
+
   if (
     !process.env.WHATSAPP_TOKEN ||
     !process.env.PHONE_NUMBER_ID ||
@@ -32,8 +38,21 @@ router.post("/send-template", async (req, res) => {
 
     let sent = 0;
     let failed = 0;
+    const failureGroups = new Map();
 
     for (const customer of customers) {
+      if (!/^\d{8,15}$/.test(customer.phone || "")) {
+        failed++;
+        const key = "INVALID_RECIPIENT";
+        const existing = failureGroups.get(key);
+        failureGroups.set(key, {
+          code: key,
+          message: "Customer phone must contain 8–15 digits, including the country calling code.",
+          count: (existing?.count || 0) + 1
+        });
+        continue;
+      }
+
       try {
         const response = await axios.post(
           `https://graph.facebook.com/${process.env.GRAPH_API_VERSION}/${process.env.PHONE_NUMBER_ID}/messages`,
@@ -55,28 +74,57 @@ router.post("/send-template", async (req, res) => {
           }
         );
 
+        sent++;
         const messageId = response.data.messages?.[0]?.id;
 
-        await Message.create({
-          customerPhone: customer.phone,
-          direction: "outgoing",
-          text: `[Template: ${templateName}]`,
-          whatsappMessageId: messageId,
-          status: "sent"
-        });
-
-        sent++;
+        try {
+          await Message.create({
+            customerPhone: customer.phone,
+            direction: "outgoing",
+            text: `[Template: ${templateName}]`,
+            whatsappMessageId: messageId,
+            status: "accepted"
+          });
+        } catch (error) {
+          console.error(
+            "Message accepted by WhatsApp but could not be saved:",
+            error.message
+          );
+        }
       } catch (error) {
         failed++;
-        console.error(
-          "Message failed:",
-          customer.phone,
-          error.response?.data?.error?.message || error.message
-        );
+        const metaError = error.response?.data?.error;
+        const failure = {
+          code: metaError?.code || error.code || "WHATSAPP_REQUEST_FAILED",
+          message: metaError?.message ||
+            (error.response
+              ? "WhatsApp rejected the request without providing an error message."
+              : "Could not reach WhatsApp. Check the backend network and try again."),
+          count: 1
+        };
+        if (metaError?.error_subcode) {
+          failure.subcode = metaError.error_subcode;
+        }
+        if (metaError?.fbtrace_id) {
+          failure.traceId = metaError.fbtrace_id;
+        }
+
+        const key = `${failure.code}:${failure.subcode || ""}:${failure.message}`;
+        const existing = failureGroups.get(key);
+        failureGroups.set(key, {
+          ...failure,
+          count: (existing?.count || 0) + 1
+        });
+        console.error("WhatsApp message rejected:", failure.code, failure.message);
       }
     }
 
-    res.json({ total: customers.length, sent, failed });
+    res.json({
+      total: customers.length,
+      sent,
+      failed,
+      failures: Array.from(failureGroups.values())
+    });
   } catch (error) {
     console.error("Campaign error:", error.message);
     res.status(500).json({ error: "Campaign could not be processed" });

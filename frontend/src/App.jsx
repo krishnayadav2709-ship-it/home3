@@ -17,6 +17,8 @@ export default function App() {
   const [template, setTemplate] = useState("");
   const [language, setLanguage] = useState("en_US");
   const [result, setResult] = useState("");
+  const [campaignResult, setCampaignResult] = useState(false);
+  const [campaignFailures, setCampaignFailures] = useState([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -61,6 +63,7 @@ export default function App() {
     setBusy(true);
     setError("");
     setResult("");
+    setCampaignResult(false);
 
     try {
       const data = await importCSV(file);
@@ -89,10 +92,13 @@ export default function App() {
 
     setBusy(true);
     setError("");
+    setCampaignFailures([]);
     setResult("Campaign processing...");
+    setCampaignResult(true);
 
     try {
       const data = await sendCampaign(template.trim(), language);
+      setCampaignFailures(data.failures || []);
       setResult(
         `Total: ${data.total} | Accepted: ${data.sent} | Failed: ${data.failed}`
       );
@@ -101,6 +107,8 @@ export default function App() {
     } catch (e) {
       setError(e.message);
       setResult("");
+      setCampaignResult(false);
+      setCampaignFailures([]);
     } finally {
       setBusy(false);
     }
@@ -235,8 +243,8 @@ export default function App() {
         </p>
         <p className="field-hint">
           Recipients: {customers.filter(customer => customer.optedIn).length} opted-in
-          customers. Only approved template name and language are needed here;
-          API credentials are stored on the backend.
+          customers. Use the exact approved template name and matching language.
+          Templates with required variables are not supported yet.
         </p>
 
         <form className="actions" onSubmit={handleCampaign}>
@@ -247,7 +255,7 @@ export default function App() {
               onChange={e => setTemplate(e.target.value)}
               placeholder="e.g. order_update"
               pattern="[a-z0-9_]+"
-              title="Use the approved template name with lowercase letters, numbers, and underscores."
+              title="Copy the exact approved template name from WhatsApp Manager."
               required
             />
           </label>
@@ -268,6 +276,32 @@ export default function App() {
             {busy ? "Please wait..." : "Send campaign"}
           </button>
         </form>
+        {campaignFailures.length > 0 && (
+          <div className="notice error" role="status">
+            <strong>Why WhatsApp rejected the messages:</strong>
+            <ul>
+              {campaignFailures.map(failure => (
+                <li key={`${failure.code}-${failure.subcode || ""}-${failure.message}`}>
+                  {failure.count} message{failure.count === 1 ? "" : "s"} —{" "}
+                  {failure.message} (code: {failure.code}
+                  {failure.subcode ? `, subcode: ${failure.subcode}` : ""})
+                  {failure.traceId ? ` · Meta trace: ${failure.traceId}` : ""}
+                </li>
+              ))}
+            </ul>
+            <p>
+              Check the exact approved template name/language, required template
+              variables, recipient number and token access. Do not retry until
+              the reported issue is corrected.
+            </p>
+          </div>
+        )}
+        {campaignResult && (
+          <p className="field-hint">
+            Accepted means WhatsApp accepted the API request; delivery
+            confirmation comes later through message status updates.
+          </p>
+        )}
       </section>
 
       <section className="panel">

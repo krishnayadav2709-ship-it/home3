@@ -51,6 +51,13 @@ export default function App() {
     e.preventDefault();
     if (!file || busy) return;
 
+    if (
+      customers.length > 0 &&
+      !window.confirm(
+        "This CSV will replace the current customer list. Continue?"
+      )
+    ) return;
+
     setBusy(true);
     setError("");
     setResult("");
@@ -63,6 +70,8 @@ export default function App() {
       setFile(null);
       e.target.reset();
       await refresh();
+      setSelected("");
+      setMessages([]);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -201,6 +210,10 @@ export default function App() {
       <section className="panel">
         <h2>1. Import customers</h2>
         <p>CSV columns: name, phone, optedIn</p>
+        <p className="field-hint">
+          Importing a CSV replaces the current customer list with the customers
+          in that file.
+        </p>
 
         <form className="actions" onSubmit={handleImport}>
           <input

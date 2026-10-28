@@ -41,21 +41,43 @@ router.post("/import", upload.single("file"), async (req, res) => {
       return res.status(400).json({ error: "CSV file required" });
     }
 
-    const rows = parse(req.file.buffer.toString("utf8"), {
-      columns: true,
-      skip_empty_lines: true,
-      trim: true,
-      bom: true
-    });
+    let records;
+    try {
+      records = parse(req.file.buffer.toString("utf8"), {
+        columns: false,
+        skip_empty_lines: true,
+        trim: true,
+        bom: true
+      });
+    } catch (error) {
+      console.error("CSV parsing error:", error.message);
+      return res.status(400).json({
+        error: "CSV import failed. Check the file format and column names."
+      });
+    }
 
-    if (rows.length > 5000) {
+    if (!records.length) {
+      return res.status(400).json({ error: "CSV file is empty; existing customers were not changed." });
+    }
+
+    const headers = records.shift().map(header => String(header).toLowerCase());
+    const requiredHeaders = ["name", "phone", "optedin"];
+
+    if (requiredHeaders.some(header => !headers.includes(header))) {
+      return res.status(400).json({
+        error: "CSV must include name, phone, and optedIn columns; existing customers were not changed."
+      });
+    }
+
+    if (records.length > 5000) {
       return res.status(400).json({ error: "Maximum 5000 rows per import" });
     }
 
-    let imported = 0;
     let skipped = 0;
+    const customersByPhone = new Map();
 
-    for (const row of rows) {
+    for (const record of records) {
+      const row = Object.fromEntries(headers.map((header, index) => [header, record[index]]));
       const phone = String(row.phone || "").replace(/[\s()+-]/g, "");
 
       if (!/^\d{8,15}$/.test(phone)) {
@@ -63,28 +85,49 @@ router.post("/import", upload.single("file"), async (req, res) => {
         continue;
       }
 
-      const optedIn =
-        String(row.optedIn || "").toLowerCase() === "true";
-
-      await Customer.updateOne(
-        { phone },
-        {
-          $set: {
-            name: row.name || "Customer",
-            optedIn
-          }
-        },
-        { upsert: true }
-      );
-
-      imported++;
+      if (customersByPhone.has(phone)) skipped++;
+      customersByPhone.set(phone, {
+        phone,
+        name: String(row.name || "").trim() || "Customer",
+        optedIn: String(row.optedin || "").toLowerCase() === "true"
+      });
     }
 
-    res.json({ imported, skipped });
+    if (customersByPhone.size === 0) {
+      return res.status(400).json({
+        error: "No valid customer phone numbers found; existing customers were not changed."
+      });
+    }
+
+    const customers = Array.from(customersByPhone.values());
+    try {
+      await Customer.bulkWrite(customers.map(customer => ({
+        updateOne: {
+          filter: { phone: customer.phone },
+          update: {
+            $set: {
+              name: customer.name,
+              optedIn: customer.optedIn
+            }
+          },
+          upsert: true
+        }
+      })));
+      await Customer.deleteMany({
+        phone: { $nin: customers.map(customer => customer.phone) }
+      });
+    } catch (error) {
+      console.error("CSV import persistence error:", error.message);
+      return res.status(500).json({
+        error: "Could not replace the customer list. Refresh the inbox before retrying."
+      });
+    }
+
+    res.json({ imported: customers.length, skipped });
   } catch (error) {
-    console.error("CSV import error:", error.message);
-    res.status(400).json({
-      error: "CSV import failed. Check the file and column names."
+    console.error("Unexpected CSV import error:", error.message);
+    res.status(500).json({
+      error: "Customer import failed unexpectedly. Refresh the inbox before retrying."
     });
   }
 });

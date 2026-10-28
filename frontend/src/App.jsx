@@ -96,11 +96,53 @@ export default function App() {
     <main className="app">
       <header className="topbar">
         <div>
-          <h1>WhatsApp Business</h1>
+          <h1>Trinetram Next-Gen PVT LTD</h1>
           <p>Campaigns, customers and conversations</p>
         </div>
-        <button onClick={refresh} disabled={busy}>Refresh</button>
+        {/* <button onClick={refresh} disabled={busy}>Refresh</button> */}
       </header>
+
+      <section className="panel" aria-labelledby="business-profile-heading">
+        <div className="section-heading">
+          <h2 id="business-profile-heading">Business profile</h2>
+          <span>Meta app details</span>
+        </div>
+
+        <dl className="business-details">
+          <div>
+            <dt>Display name</dt>
+            <dd>Trinetram NextGen Software</dd>
+          </div>
+          <div>
+            <dt>App ID</dt>
+            <dd>1106267098458142</dd>
+          </div>
+          <div>
+            <dt>Contact email</dt>
+            <dd>
+              <a href="mailto:info@trinetramsoftware.com">
+                info@trinetramsoftware.com
+              </a>
+            </dd>
+          </div>
+          <div>
+            <dt>Privacy policy</dt>
+            <dd>
+              <a
+                href="https://trinetramsoftware.com/"
+                target="_blank"
+                rel="noreferrer"
+              >
+                trinetramsoftware.com
+              </a>
+            </dd>
+          </div>
+          <div>
+            <dt>Category</dt>
+            <dd>Business and pages</dd>
+          </div>
+        </dl>
+      </section>
 
       {error && <div className="notice error">{error}</div>}
       {result && <div className="notice">{result}</div>}

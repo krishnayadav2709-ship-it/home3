@@ -5,15 +5,11 @@ const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
 
-if (process.env.DNS_SERVERS !== undefined) {
+if (process.env.DNS_SERVERS?.trim()) {
   const dnsServers = process.env.DNS_SERVERS
     .split(",")
     .map(server => server.trim())
     .filter(Boolean);
-
-  if (!dnsServers.length) {
-    throw new Error("DNS_SERVERS must contain at least one DNS server address");
-  }
 
   dns.setServers(dnsServers);
 }

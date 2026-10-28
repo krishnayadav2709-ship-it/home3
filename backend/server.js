@@ -17,8 +17,10 @@ if (process.env.DNS_SERVERS?.trim()) {
 const app = express();
 
 const allowedOrigins = new Set(
-  (process.env.CLIENT_URL || "")
-    .split(",")
+  [
+    "https://home3.onrender.com",
+    ...(process.env.CLIENT_URL || "").split(",")
+  ]
     .map(origin => origin.trim().replace(/\/+$/, ""))
     .filter(Boolean)
 );

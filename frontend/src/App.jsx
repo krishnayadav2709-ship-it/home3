@@ -253,11 +253,23 @@ export default function App() {
             <input
               value={template}
               onChange={e => setTemplate(e.target.value)}
+              onPaste={e => {
+                const pastedText = e.clipboardData.getData("text");
+                if (!pastedText) return;
+
+                e.preventDefault();
+                const [name] = pastedText.trim().split(/\s*[·•]\s*/, 1);
+                setTemplate(name.trim());
+              }}
               placeholder="e.g. order_update"
               pattern="[a-z0-9_]+"
-              title="Copy the exact approved template name from WhatsApp Manager."
+              title="Use lowercase letters, numbers, and underscores. You can paste the full Meta title; the template name will be extracted."
               required
             />
+            <span className="field-hint">
+              Paste the template name or its Meta title, such as{" "}
+              <code>trinetram_diwali_offer_2026 · English</code>.
+            </span>
           </label>
 
           <label className="form-field">

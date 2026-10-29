@@ -49,7 +49,37 @@ export default function App() {
     getConfigStatus()
       .then(setConfigStatus)
       .catch(e => setError(e.message));
+
+    const customerRefresh = setInterval(() => {
+      getCustomers()
+        .then(setCustomers)
+        .catch(e => setError(e.message));
+    }, 10000);
+
+    return () => clearInterval(customerRefresh);
   }, []);
+
+  useEffect(() => {
+    if (!selected) return undefined;
+
+    let active = true;
+    const refreshMessages = async () => {
+      try {
+        const latestMessages = await getMessages(selected);
+        if (active) setMessages(latestMessages);
+      } catch (e) {
+        if (active) setError(e.message);
+      }
+    };
+
+    refreshMessages();
+    const messageRefresh = setInterval(refreshMessages, 5000);
+
+    return () => {
+      active = false;
+      clearInterval(messageRefresh);
+    };
+  }, [selected]);
 
   async function handleImport(e) {
     e.preventDefault();

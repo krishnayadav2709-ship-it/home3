@@ -118,7 +118,7 @@ export default function App() {
     <main className="app">
       <header className="topbar">
         <div>
-          <h1>Trinetram Next-Gen PVT LTD</h1>
+          <h1>Trinetram Next-Gen Software PVT LTD</h1>
           <p>Campaigns, customers and conversations</p>
         </div>
         {/* <button onClick={refresh} disabled={busy}>Refresh</button> */}

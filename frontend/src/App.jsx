@@ -15,7 +15,9 @@ export default function App() {
   const [configStatus, setConfigStatus] = useState(null);
   const [file, setFile] = useState(null);
   const [template, setTemplate] = useState("");
-  const [language, setLanguage] = useState("en_US");
+  const [language, setLanguage] = useState("en");
+  const [headerType, setHeaderType] = useState("image");
+  const [headerImageUrl, setHeaderImageUrl] = useState("");
   const [result, setResult] = useState("");
   const [campaignResult, setCampaignResult] = useState(false);
   const [campaignFailures, setCampaignFailures] = useState([]);
@@ -97,7 +99,11 @@ export default function App() {
     setCampaignResult(true);
 
     try {
-      const data = await sendCampaign(template.trim(), language);
+      const data = await sendCampaign(
+        template.trim(),
+        language,
+        headerType === "image" ? headerImageUrl.trim() : ""
+      );
       setCampaignFailures(data.failures || []);
       setResult(
         `Total: ${data.total} | Accepted: ${data.sent} | Failed: ${data.failed}`
@@ -278,11 +284,39 @@ export default function App() {
               value={language}
               onChange={e => setLanguage(e.target.value)}
             >
+              <option value="en">English (Default)</option>
               <option value="en_US">English (US)</option>
               <option value="en_GB">English (UK)</option>
               <option value="hi">Hindi</option>
             </select>
           </label>
+
+          <label className="form-field">
+            <span>Template header</span>
+            <select
+              value={headerType}
+              onChange={e => setHeaderType(e.target.value)}
+            >
+              <option value="image">Image</option>
+              <option value="none">No header</option>
+            </select>
+          </label>
+
+          {headerType === "image" && (
+            <label className="form-field">
+              <span>Public image URL</span>
+              <input
+                type="url"
+                value={headerImageUrl}
+                onChange={e => setHeaderImageUrl(e.target.value)}
+                placeholder="https://example.com/image.jpg"
+                required
+              />
+              <span className="field-hint">
+                Use a public HTTPS image link that Meta can access without login.
+              </span>
+            </label>
+          )}
 
           <button disabled={busy || !template.trim()}>
             {busy ? "Please wait..." : "Send campaign"}

@@ -59,9 +59,13 @@ export const importCSV = file => {
   });
 };
 
-export const sendCampaign = (templateName, language = "en_US") =>
+export const sendCampaign = (
+  templateName,
+  language = "en_US",
+  headerImageUrl = ""
+) =>
   request("/campaigns/send-template", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ templateName, language })
+    body: JSON.stringify({ templateName, language, headerImageUrl })
   });

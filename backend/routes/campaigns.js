@@ -6,7 +6,11 @@ const Message = require("../models/Message");
 const router = express.Router();
 
 router.post("/send-template", async (req, res) => {
-  const { templateName, language = "en_US" } = req.body;
+  const {
+    templateName,
+    language = "en_US",
+    headerImageUrl = ""
+  } = req.body;
 
   if (!/^[a-z0-9_]+$/.test(templateName || "")) {
     return res.status(400).json({
@@ -14,10 +18,32 @@ router.post("/send-template", async (req, res) => {
     });
   }
 
-  if (!["en_US", "en_GB", "hi"].includes(language)) {
+  if (!["en", "en_US", "en_GB", "hi"].includes(language)) {
     return res.status(400).json({
       error: "Select a supported template language"
     });
+  }
+
+  let imageUrl;
+  if (headerImageUrl) {
+    try {
+      imageUrl = new URL(headerImageUrl);
+    } catch {
+      return res.status(400).json({
+        error: "Enter a valid public HTTPS image URL"
+      });
+    }
+
+    if (
+      imageUrl.protocol !== "https:" ||
+      !imageUrl.hostname ||
+      imageUrl.username ||
+      imageUrl.password
+    ) {
+      return res.status(400).json({
+        error: "Image header URLs must use HTTPS and cannot require login"
+      });
+    }
   }
 
   if (
@@ -54,6 +80,24 @@ router.post("/send-template", async (req, res) => {
       }
 
       try {
+        const template = {
+          name: templateName,
+          language: { code: language }
+        };
+        if (imageUrl) {
+          template.components = [
+            {
+              type: "header",
+              parameters: [
+                {
+                  type: "image",
+                  image: { link: imageUrl.href }
+                }
+              ]
+            }
+          ];
+        }
+
         const response = await axios.post(
           `https://graph.facebook.com/${process.env.GRAPH_API_VERSION}/${process.env.PHONE_NUMBER_ID}/messages`,
           {
@@ -61,10 +105,7 @@ router.post("/send-template", async (req, res) => {
             recipient_type: "individual",
             to: customer.phone,
             type: "template",
-            template: {
-              name: templateName,
-              language: { code: language }
-            }
+            template
           },
           {
             headers: {

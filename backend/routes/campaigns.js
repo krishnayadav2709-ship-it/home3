@@ -260,6 +260,7 @@ router.post("/send-template", async (req, res) => {
 
         sent++;
         const messageId = response.data.messages?.[0]?.id;
+        const sentAt = new Date();
 
         try {
           await Message.create({
@@ -272,11 +273,29 @@ router.post("/send-template", async (req, res) => {
             mediaId: headerImageId || "",
             mediaUrl: imageUrl?.href || "",
             whatsappMessageId: messageId,
-            status: "accepted"
+            status: "accepted",
+            timestamp: sentAt
           });
         } catch (error) {
           console.error(
             "Message accepted by WhatsApp but could not be saved:",
+            error.message
+          );
+        }
+
+        try {
+          await Customer.updateOne(
+            { phone: customer.phone },
+            {
+              $max: {
+                lastMessageAt: sentAt,
+                lastOutgoingMessageAt: sentAt
+              }
+            }
+          );
+        } catch (error) {
+          console.error(
+            "Could not update customer activity after accepted message:",
             error.message
           );
         }

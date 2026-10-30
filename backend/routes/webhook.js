@@ -142,7 +142,10 @@ router.post("/", async (req, res) => {
             { phone },
             {
               $set: { name },
-              $max: { lastMessageAt: messageDate },
+              $max: {
+                lastMessageAt: messageDate,
+                lastIncomingMessageAt: messageDate
+              },
               $setOnInsert: { optedIn: false }
             },
             { upsert: true }

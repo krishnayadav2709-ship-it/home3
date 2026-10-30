@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   getCustomers,
   getConfigStatus,
@@ -10,10 +10,18 @@ import {
 } from "./api";
 import "./index.css";
 
+function customerHasReply(customer) {
+  const incomingAt = new Date(customer.lastIncomingMessageAt || 0).getTime();
+  const outgoingAt = new Date(customer.lastOutgoingMessageAt || 0).getTime();
+  return incomingAt > outgoingAt;
+}
+
 export default function App() {
   const [customers, setCustomers] = useState([]);
   const [selected, setSelected] = useState("");
   const [messages, setMessages] = useState([]);
+  const messageListRef = useRef(null);
+  const lastMessageRef = useRef({ customer: "", id: "" });
   const [messageRefreshToken, setMessageRefreshToken] = useState(0);
   const [configStatus, setConfigStatus] = useState(null);
   const [file, setFile] = useState(null);
@@ -87,6 +95,25 @@ export default function App() {
       clearInterval(messageRefresh);
     };
   }, [selected, messageRefreshToken]);
+
+  useEffect(() => {
+    const newestMessageId = messages.at(-1)?._id || "";
+    const customerChanged = lastMessageRef.current.customer !== selected;
+    const newMessage = newestMessageId &&
+      (customerChanged || newestMessageId !== lastMessageRef.current.id);
+
+    if (newMessage && messageListRef.current) {
+      messageListRef.current.scrollTo({
+        top: messageListRef.current.scrollHeight,
+        behavior: customerChanged ? "auto" : "smooth"
+      });
+    }
+
+    lastMessageRef.current = {
+      customer: selected,
+      id: newestMessageId
+    };
+  }, [messages, selected]);
 
   async function handleImport(e) {
     e.preventDefault();
@@ -450,8 +477,19 @@ export default function App() {
                 }`}
                 onClick={() => openCustomer(customer.phone)}
               >
-                <strong>{customer.name}</strong>
+                <strong
+                  className={
+                    customerHasReply(customer)
+                      ? "customer-name replied"
+                      : "customer-name"
+                  }
+                >
+                  {customer.name}
+                </strong>
                 <span>{customer.phone}</span>
+                {customerHasReply(customer) && (
+                  <small className="reply-indicator">Replied</small>
+                )}
                 <small>
                   {customer.optedIn ? "Opted in" : "No consent recorded"}
                 </small>
@@ -466,31 +504,37 @@ export default function App() {
           <div className="conversation">
             <h3>{selected || "Select a customer"}</h3>
 
-            {messages.map(message => (
-              <article
-                key={message._id}
-                className={`message ${message.direction}`}
-              >
-                <p>{message.text || "(Non-text message)"}</p>
-                {(message.mediaId || message.mediaUrl) && (
-                  <img
-                    className="message-image"
-                    src={message.mediaUrl || getMessageMediaUrl(selected, message._id)}
-                    alt={message.direction === "incoming" ? "Image received from customer" : "Image sent with this template"}
-                    loading="lazy"
-                  />
-                )}
-                <small>
-                  {message.direction} · {message.status}
-                  {" · "}
-                  {new Date(message.timestamp).toLocaleString()}
-                </small>
-              </article>
-            ))}
+            <div
+              className="message-list"
+              ref={messageListRef}
+              aria-label="Conversation messages"
+            >
+              {messages.map(message => (
+                <article
+                  key={message._id}
+                  className={`message ${message.direction}`}
+                >
+                  <p>{message.text || "(Non-text message)"}</p>
+                  {(message.mediaId || message.mediaUrl) && (
+                    <img
+                      className="message-image"
+                      src={message.mediaUrl || getMessageMediaUrl(selected, message._id)}
+                      alt={message.direction === "incoming" ? "Image received from customer" : "Image sent with this template"}
+                      loading="lazy"
+                    />
+                  )}
+                  <small>
+                    {message.direction} · {message.status}
+                    {" · "}
+                    {new Date(message.timestamp).toLocaleString()}
+                  </small>
+                </article>
+              ))}
 
-            {selected && !messages.length && (
-              <p>No messages saved for this customer.</p>
-            )}
+              {selected && !messages.length && (
+                <p>No messages saved for this customer.</p>
+              )}
+            </div>
           </div>
         </div>
       </section>

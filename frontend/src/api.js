@@ -49,6 +49,11 @@ export const getCustomers = () =>
 export const getMessages = phone =>
   request(`/customers/${encodeURIComponent(phone)}/messages`);
 
+export const markCustomerRead = phone =>
+  request(`/customers/${encodeURIComponent(phone)}/read`, {
+    method: "POST"
+  });
+
 export const getMessageMediaUrl = (phone, messageId) =>
   `${API}/customers/${encodeURIComponent(phone)}/messages/${encodeURIComponent(messageId)}/media`;
 

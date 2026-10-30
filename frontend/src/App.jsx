@@ -5,6 +5,7 @@ import {
   getMessages,
   getMessageMediaUrl,
   importCSV,
+  markCustomerRead,
   sendCampaign,
   uploadCampaignImage
 } from "./api";
@@ -12,8 +13,8 @@ import "./index.css";
 
 function customerHasReply(customer) {
   const incomingAt = new Date(customer.lastIncomingMessageAt || 0).getTime();
-  const outgoingAt = new Date(customer.lastOutgoingMessageAt || 0).getTime();
-  return incomingAt > outgoingAt;
+  const readAt = new Date(customer.lastReadMessageAt || 0).getTime();
+  return incomingAt > readAt;
 }
 
 export default function App() {
@@ -51,12 +52,28 @@ export default function App() {
     }
   }
 
-  function openCustomer(phone) {
+  async function openCustomer(phone) {
     if (phone !== selected) {
       setMessages([]);
       setError("");
     }
     setSelected(phone);
+
+    const customer = customers.find(item => item.phone === phone);
+    if (!customer || !customerHasReply(customer)) return;
+
+    try {
+      const { lastReadMessageAt } = await markCustomerRead(phone);
+      setCustomers(current =>
+        current.map(item =>
+          item.phone === phone
+            ? { ...item, lastReadMessageAt }
+            : item
+        )
+      );
+    } catch (e) {
+      setError(e.message);
+    }
   }
 
   useEffect(() => {

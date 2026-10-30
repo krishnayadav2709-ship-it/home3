@@ -90,6 +90,37 @@ router.get("/:phone/messages/:messageId/media", async (req, res) => {
   }
 });
 
+router.post("/:phone/read", async (req, res) => {
+  try {
+    const latestIncoming = await Message.findOne({
+      customerPhone: req.params.phone,
+      direction: "incoming"
+    })
+      .sort({ timestamp: -1 })
+      .select("timestamp")
+      .lean();
+
+    if (!latestIncoming) {
+      return res.json({ lastReadMessageAt: null });
+    }
+
+    const customer = await Customer.findOneAndUpdate(
+      { phone: req.params.phone },
+      { $max: { lastReadMessageAt: latestIncoming.timestamp } },
+      { new: true, projection: { lastReadMessageAt: 1 } }
+    ).lean();
+
+    if (!customer) {
+      return res.status(404).json({ error: "Customer not found" });
+    }
+
+    return res.json({ lastReadMessageAt: customer.lastReadMessageAt });
+  } catch (error) {
+    console.error("Could not mark customer replies as read:", error.message);
+    return res.status(500).json({ error: "Could not mark customer replies as read" });
+  }
+});
+
 router.get("/:phone/messages", async (req, res) => {
   try {
     const messages = await Message.find({

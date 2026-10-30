@@ -7,7 +7,8 @@ const customerSchema = new mongoose.Schema(
     optedIn: { type: Boolean, default: false },
     lastMessageAt: Date,
     lastIncomingMessageAt: Date,
-    lastOutgoingMessageAt: Date
+    lastOutgoingMessageAt: Date,
+    lastReadMessageAt: Date
   },
   { timestamps: true }
 );

@@ -1,15 +1,111 @@
 const express = require("express");
 const axios = require("axios");
+const FormData = require("form-data");
+const multer = require("multer");
 const Customer = require("../models/Customer");
 const Message = require("../models/Message");
 
 const router = express.Router();
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }
+});
+
+function uploadImageFile(req, res, next) {
+  upload.single("image")(req, res, error => {
+    if (error) {
+      return res.status(error.code === "LIMIT_FILE_SIZE" ? 413 : 400).json({
+        error: error.code === "LIMIT_FILE_SIZE"
+          ? "Image must be 5 MB or smaller."
+          : "Could not read the uploaded image."
+      });
+    }
+
+    return next();
+  });
+}
+
+function hasValidImageSignature(file) {
+  if (file.mimetype === "image/jpeg") {
+    return file.buffer.length >= 3 &&
+      file.buffer[0] === 0xff &&
+      file.buffer[1] === 0xd8 &&
+      file.buffer[2] === 0xff;
+  }
+
+  if (file.mimetype === "image/png") {
+    return file.buffer.subarray(0, 8).equals(
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+    );
+  }
+
+  return false;
+}
+
+function hasWhatsAppCredentials() {
+  return Boolean(
+    process.env.WHATSAPP_TOKEN &&
+    process.env.PHONE_NUMBER_ID &&
+    /^v\d+\.\d+$/.test(process.env.GRAPH_API_VERSION || "")
+  );
+}
+
+router.post("/upload-image", uploadImageFile, async (req, res) => {
+  if (!req.file || !hasValidImageSignature(req.file)) {
+    return res.status(400).json({
+      error: "Choose a valid JPEG or PNG image."
+    });
+  }
+
+  if (!hasWhatsAppCredentials()) {
+    return res.status(503).json({
+      error: "Configure WhatsApp credentials and API version in .env"
+    });
+  }
+
+  const form = new FormData();
+  form.append("messaging_product", "whatsapp");
+  form.append("file", req.file.buffer, {
+    filename: req.file.mimetype === "image/png" ? "campaign-image.png" : "campaign-image.jpg",
+    contentType: req.file.mimetype
+  });
+
+  try {
+    const response = await axios.post(
+      `https://graph.facebook.com/${process.env.GRAPH_API_VERSION}/${process.env.PHONE_NUMBER_ID}/media`,
+      form,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
+          ...form.getHeaders()
+        },
+        maxBodyLength: 6 * 1024 * 1024,
+        timeout: 30000
+      }
+    );
+
+    if (!response.data.id) {
+      return res.status(502).json({
+        error: "WhatsApp uploaded the image without returning a media ID."
+      });
+    }
+
+    return res.json({ mediaId: response.data.id });
+  } catch (error) {
+    const metaError = error.response?.data?.error;
+    console.error("WhatsApp image upload failed:", metaError?.code || error.code || "UPLOAD_FAILED");
+    return res.status(502).json({
+      error: metaError?.message || "WhatsApp could not upload this image. Check the image and try again."
+    });
+  }
+});
 
 router.post("/send-template", async (req, res) => {
   const {
     templateName,
     language = "en_US",
-    headerImageUrl = ""
+    headerImageUrl = "",
+    headerImageId = ""
   } = req.body;
 
   if (!/^[a-z0-9_]+$/.test(templateName || "")) {
@@ -21,6 +117,21 @@ router.post("/send-template", async (req, res) => {
   if (!["en", "en_US", "en_GB", "hi"].includes(language)) {
     return res.status(400).json({
       error: "Select a supported template language"
+    });
+  }
+
+  if (headerImageUrl && headerImageId) {
+    return res.status(400).json({
+      error: "Use either a public image URL or an uploaded image, not both."
+    });
+  }
+
+  if (
+    headerImageId &&
+    (typeof headerImageId !== "string" || headerImageId.length > 255)
+  ) {
+    return res.status(400).json({
+      error: "Uploaded image ID is invalid."
     });
   }
 
@@ -46,11 +157,7 @@ router.post("/send-template", async (req, res) => {
     }
   }
 
-  if (
-    !process.env.WHATSAPP_TOKEN ||
-    !process.env.PHONE_NUMBER_ID ||
-    !/^v\d+\.\d+$/.test(process.env.GRAPH_API_VERSION || "")
-  ) {
+  if (!hasWhatsAppCredentials()) {
     return res.status(503).json({
       error: "Configure WhatsApp credentials and API version in .env"
     });
@@ -84,14 +191,16 @@ router.post("/send-template", async (req, res) => {
           name: templateName,
           language: { code: language }
         };
-        if (imageUrl) {
+        if (imageUrl || headerImageId) {
           template.components = [
             {
               type: "header",
               parameters: [
                 {
                   type: "image",
-                  image: { link: imageUrl.href }
+                  image: imageUrl
+                    ? { link: imageUrl.href }
+                    : { id: headerImageId }
                 }
               ]
             }

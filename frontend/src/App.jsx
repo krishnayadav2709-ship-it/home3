@@ -4,7 +4,8 @@ import {
   getConfigStatus,
   getMessages,
   importCSV,
-  sendCampaign
+  sendCampaign,
+  uploadCampaignImage
 } from "./api";
 import "./index.css";
 
@@ -17,8 +18,10 @@ export default function App() {
   const [file, setFile] = useState(null);
   const [template, setTemplate] = useState("");
   const [language, setLanguage] = useState("en");
-  const [headerType, setHeaderType] = useState("image");
+  const [headerType, setHeaderType] = useState("none");
+  const [imageSource, setImageSource] = useState("upload");
   const [headerImageUrl, setHeaderImageUrl] = useState("");
+  const [headerImageFile, setHeaderImageFile] = useState(null);
   const [result, setResult] = useState("");
   const [campaignResult, setCampaignResult] = useState(false);
   const [campaignFailures, setCampaignFailures] = useState([]);
@@ -132,10 +135,19 @@ export default function App() {
     setCampaignResult(true);
 
     try {
+      let headerImageId = "";
+      if (headerType === "image" && imageSource === "upload") {
+        const uploaded = await uploadCampaignImage(headerImageFile);
+        headerImageId = uploaded.mediaId;
+      }
+
       const data = await sendCampaign(
         template.trim(),
         language,
-        headerType === "image" ? headerImageUrl.trim() : ""
+        headerType === "image" && imageSource === "url"
+          ? headerImageUrl.trim()
+          : "",
+        headerImageId
       );
       setCampaignFailures(data.failures || []);
       setResult(
@@ -330,28 +342,65 @@ export default function App() {
               value={headerType}
               onChange={e => setHeaderType(e.target.value)}
             >
-              <option value="image">Image</option>
               <option value="none">No header</option>
+              <option value="image">Image</option>
             </select>
+            <span className="field-hint">
+              Match this to the approved template. Header mismatches can cause
+              WhatsApp error 132012.
+            </span>
           </label>
 
           {headerType === "image" && (
-            <label className="form-field">
-              <span>Public image URL</span>
-              <input
-                type="url"
-                value={headerImageUrl}
-                onChange={e => setHeaderImageUrl(e.target.value)}
-                placeholder="https://example.com/image.jpg"
-                required
-              />
-              <span className="field-hint">
-                Use a public HTTPS image link that Meta can access without login.
-              </span>
-            </label>
+            <>
+              <label className="form-field">
+                <span>Image source</span>
+                <select
+                  value={imageSource}
+                  onChange={e => setImageSource(e.target.value)}
+                >
+                  <option value="upload">Upload from this device</option>
+                  <option value="url">Public image URL</option>
+                </select>
+              </label>
+
+              {imageSource === "upload" ? (
+                <label className="form-field">
+                  <span>Choose an image (JPEG or PNG, up to 5 MB)</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png"
+                    required
+                    onChange={e => setHeaderImageFile(e.target.files?.[0] || null)}
+                  />
+                </label>
+              ) : (
+                <label className="form-field">
+                  <span>Public image URL</span>
+                  <input
+                    type="url"
+                    value={headerImageUrl}
+                    onChange={e => setHeaderImageUrl(e.target.value)}
+                    placeholder="https://example.com/image.jpg"
+                    required
+                  />
+                  <span className="field-hint">
+                    Use a public HTTPS image link that Meta can access without login.
+                  </span>
+                </label>
+              )}
+            </>
           )}
 
-          <button disabled={busy || !template.trim()}>
+          <button
+            disabled={
+              busy ||
+              !template.trim() ||
+              (headerType === "image" &&
+                ((imageSource === "upload" && !headerImageFile) ||
+                  (imageSource === "url" && !headerImageUrl.trim())))
+            }
+          >
             {busy ? "Please wait..." : "Send campaign"}
           </button>
         </form>
@@ -369,9 +418,10 @@ export default function App() {
               ))}
             </ul>
             <p>
-              Check the exact approved template name/language, required template
-              variables, recipient number and token access. Do not retry until
-              the reported issue is corrected.
+              Match the header choice to the approved template: choose No header
+              for templates without an image header, or Image for templates
+              with an image header. Templates with required variables are not
+              supported yet.
             </p>
           </div>
         )}

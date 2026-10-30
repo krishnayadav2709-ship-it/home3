@@ -59,13 +59,29 @@ export const importCSV = file => {
   });
 };
 
+export const uploadCampaignImage = file => {
+  const form = new FormData();
+  form.append("image", file);
+
+  return request("/campaigns/upload-image", {
+    method: "POST",
+    body: form
+  });
+};
+
 export const sendCampaign = (
   templateName,
   language = "en_US",
-  headerImageUrl = ""
+  headerImageUrl = "",
+  headerImageId = ""
 ) =>
   request("/campaigns/send-template", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ templateName, language, headerImageUrl })
+    body: JSON.stringify({
+      templateName,
+      language,
+      headerImageUrl,
+      headerImageId
+    })
   });

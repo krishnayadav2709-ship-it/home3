@@ -23,7 +23,6 @@ export default function App() {
   const [imageSource, setImageSource] = useState("upload");
   const [headerImageUrl, setHeaderImageUrl] = useState("");
   const [headerImageFile, setHeaderImageFile] = useState(null);
-  const [bodyParameterText, setBodyParameterText] = useState("");
   const [result, setResult] = useState("");
   const [campaignResult, setCampaignResult] = useState(false);
   const [campaignFailures, setCampaignFailures] = useState([]);
@@ -149,8 +148,7 @@ export default function App() {
         headerType === "image" && imageSource === "url"
           ? headerImageUrl.trim()
           : "",
-        headerImageId,
-        bodyParameterText.split(/\r?\n/).map(value => value.trim()).filter(Boolean)
+        headerImageId
       );
       setCampaignFailures(data.failures || []);
       setResult(
@@ -351,22 +349,6 @@ export default function App() {
             <span className="field-hint">
               Match this to the approved template. Header mismatches can cause
               WhatsApp error 132012.
-            </span>
-          </label>
-
-          <label className="form-field">
-            <span>Template body values (optional)</span>
-            <textarea
-              value={bodyParameterText}
-              onChange={e => setBodyParameterText(e.target.value)}
-              placeholder={"One value per line, in template order\nExample: Priya"}
-              rows={3}
-            />
-            <span className="field-hint">
-              If the approved template contains body placeholders such as{" "}
-              <code>{"{{1}}"}</code>, enter each value on its own line. Leave
-              blank if it has no placeholders. For named placeholders, use{" "}
-              <code>name=value</code> on each line.
             </span>
           </label>
 

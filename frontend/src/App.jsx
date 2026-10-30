@@ -12,6 +12,7 @@ export default function App() {
   const [customers, setCustomers] = useState([]);
   const [selected, setSelected] = useState("");
   const [messages, setMessages] = useState([]);
+  const [messageRefreshToken, setMessageRefreshToken] = useState(0);
   const [configStatus, setConfigStatus] = useState(null);
   const [file, setFile] = useState(null);
   const [template, setTemplate] = useState("");
@@ -23,6 +24,11 @@ export default function App() {
   const [campaignFailures, setCampaignFailures] = useState([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const orderedCustomers = [...customers].sort((left, right) => {
+    const leftActivity = new Date(left.lastMessageAt || 0).getTime() || 0;
+    const rightActivity = new Date(right.lastMessageAt || 0).getTime() || 0;
+    return rightActivity - leftActivity;
+  });
 
   async function refresh() {
     try {
@@ -33,15 +39,12 @@ export default function App() {
     }
   }
 
-  async function openCustomer(phone) {
-    setSelected(phone);
-
-    try {
-      setMessages(await getMessages(phone));
+  function openCustomer(phone) {
+    if (phone !== selected) {
+      setMessages([]);
       setError("");
-    } catch (e) {
-      setError(e.message);
     }
+    setSelected(phone);
   }
 
   useEffect(() => {
@@ -54,7 +57,7 @@ export default function App() {
       getCustomers()
         .then(setCustomers)
         .catch(e => setError(e.message));
-    }, 10000);
+    }, 5000);
 
     return () => clearInterval(customerRefresh);
   }, []);
@@ -79,7 +82,7 @@ export default function App() {
       active = false;
       clearInterval(messageRefresh);
     };
-  }, [selected]);
+  }, [selected, messageRefreshToken]);
 
   async function handleImport(e) {
     e.preventDefault();
@@ -139,7 +142,7 @@ export default function App() {
         `Total: ${data.total} | Accepted: ${data.sent} | Failed: ${data.failed}`
       );
 
-      if (selected) await openCustomer(selected);
+      if (selected) setMessageRefreshToken(token => token + 1);
     } catch (e) {
       setError(e.message);
       setResult("");
@@ -383,12 +386,12 @@ export default function App() {
       <section className="panel">
         <div className="section-heading">
           <h2>3. Customer inbox</h2>
-          <span>{customers.length} customers</span>
+          <span>{customers.length} customers · updates every 5 seconds</span>
         </div>
 
         <div className="inbox">
           <aside className="customer-list">
-            {customers.map(customer => (
+            {orderedCustomers.map(customer => (
               <button
                 key={customer.phone}
                 className={`customer ${
@@ -405,7 +408,7 @@ export default function App() {
             ))}
 
             {!customers.length && (
-              <p>No customers yet. Import a CSV file first.</p>
+              <p>No customers yet. Import a CSV or wait for an incoming message.</p>
             )}
           </aside>
 

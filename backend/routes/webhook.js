@@ -136,11 +136,13 @@ router.post("/", async (req, res) => {
           const name =
             value.contacts?.find(c => c.wa_id === phone)?.profile?.name ||
             "Customer";
+          const messageDate = getMessageDate(msg.timestamp);
 
           await Customer.updateOne(
             { phone },
             {
-              $set: { name, lastMessageAt: new Date() },
+              $set: { name },
+              $max: { lastMessageAt: messageDate },
               $setOnInsert: { optedIn: false }
             },
             { upsert: true }
@@ -155,7 +157,7 @@ router.post("/", async (req, res) => {
                 text: getMessageText(msg),
                 whatsappMessageId: msg.id,
                 status: "received",
-                timestamp: getMessageDate(msg.timestamp)
+                timestamp: messageDate
               }
             },
             { upsert: true }

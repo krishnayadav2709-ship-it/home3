@@ -49,6 +49,9 @@ export const getCustomers = () =>
 export const getMessages = phone =>
   request(`/customers/${encodeURIComponent(phone)}/messages`);
 
+export const getMessageMediaUrl = (phone, messageId) =>
+  `${API}/customers/${encodeURIComponent(phone)}/messages/${encodeURIComponent(messageId)}/media`;
+
 export const importCSV = file => {
   const form = new FormData();
   form.append("file", file);
@@ -73,7 +76,8 @@ export const sendCampaign = (
   templateName,
   language = "en_US",
   headerImageUrl = "",
-  headerImageId = ""
+  headerImageId = "",
+  bodyParameters = []
 ) =>
   request("/campaigns/send-template", {
     method: "POST",
@@ -82,6 +86,7 @@ export const sendCampaign = (
       templateName,
       language,
       headerImageUrl,
-      headerImageId
+      headerImageId,
+      bodyParameters
     })
   });

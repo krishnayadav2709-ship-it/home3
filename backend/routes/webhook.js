@@ -155,6 +155,7 @@ router.post("/", async (req, res) => {
                 customerPhone: phone,
                 direction: "incoming",
                 text: getMessageText(msg),
+                mediaId: msg.type === "image" ? msg.image?.id || "" : "",
                 whatsappMessageId: msg.id,
                 status: "received",
                 timestamp: messageDate

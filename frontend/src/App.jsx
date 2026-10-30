@@ -3,6 +3,7 @@ import {
   getCustomers,
   getConfigStatus,
   getMessages,
+  getMessageMediaUrl,
   importCSV,
   sendCampaign,
   uploadCampaignImage
@@ -22,6 +23,7 @@ export default function App() {
   const [imageSource, setImageSource] = useState("upload");
   const [headerImageUrl, setHeaderImageUrl] = useState("");
   const [headerImageFile, setHeaderImageFile] = useState(null);
+  const [bodyParameterText, setBodyParameterText] = useState("");
   const [result, setResult] = useState("");
   const [campaignResult, setCampaignResult] = useState(false);
   const [campaignFailures, setCampaignFailures] = useState([]);
@@ -147,7 +149,8 @@ export default function App() {
         headerType === "image" && imageSource === "url"
           ? headerImageUrl.trim()
           : "",
-        headerImageId
+        headerImageId,
+        bodyParameterText.split(/\r?\n/).map(value => value.trim()).filter(Boolean)
       );
       setCampaignFailures(data.failures || []);
       setResult(
@@ -351,6 +354,22 @@ export default function App() {
             </span>
           </label>
 
+          <label className="form-field">
+            <span>Template body values (optional)</span>
+            <textarea
+              value={bodyParameterText}
+              onChange={e => setBodyParameterText(e.target.value)}
+              placeholder={"One value per line, in template order\nExample: Priya"}
+              rows={3}
+            />
+            <span className="field-hint">
+              If the approved template contains body placeholders such as{" "}
+              <code>{"{{1}}"}</code>, enter each value on its own line. Leave
+              blank if it has no placeholders. For named placeholders, use{" "}
+              <code>name=value</code> on each line.
+            </span>
+          </label>
+
           {headerType === "image" && (
             <>
               <label className="form-field">
@@ -420,8 +439,8 @@ export default function App() {
             <p>
               Match the header choice to the approved template: choose No header
               for templates without an image header, or Image for templates
-              with an image header. Templates with required variables are not
-              supported yet.
+              with an image header. For error 132012, check the template's
+              language, header format, and the number/order of body values.
             </p>
           </div>
         )}
@@ -471,6 +490,14 @@ export default function App() {
                 className={`message ${message.direction}`}
               >
                 <p>{message.text || "(Non-text message)"}</p>
+                {(message.mediaId || message.mediaUrl) && (
+                  <img
+                    className="message-image"
+                    src={message.mediaUrl || getMessageMediaUrl(selected, message._id)}
+                    alt={message.direction === "incoming" ? "Image received from customer" : "Image sent with this template"}
+                    loading="lazy"
+                  />
+                )}
                 <small>
                   {message.direction} · {message.status}
                   {" · "}

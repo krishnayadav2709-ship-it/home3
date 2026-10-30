@@ -9,6 +9,8 @@ const messageSchema = new mongoose.Schema(
       required: true
     },
     text: { type: String, default: "" },
+    mediaId: { type: String, default: "" },
+    mediaUrl: { type: String, default: "" },
     whatsappMessageId: { type: String, unique: true, sparse: true },
     status: { type: String, default: "received" },
     timestamp: { type: Date, default: Date.now }

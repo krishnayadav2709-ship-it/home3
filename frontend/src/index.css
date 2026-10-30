@@ -128,11 +128,16 @@ h1, h2, h3, p {
   padding: 2px 4px;
 }
 
-input, select {
+input, select, textarea {
   padding: 10px;
   border: 1px solid #d4d8dd;
   border-radius: 8px;
   max-width: 100%;
+}
+
+textarea {
+  font: inherit;
+  resize: vertical;
 }
 
 .notice {
@@ -205,6 +210,16 @@ input, select {
 
 .message small {
   color: #626a73;
+}
+
+.message-image {
+  display: block;
+  width: min(100%, 360px);
+  max-height: 360px;
+  object-fit: contain;
+  object-position: left;
+  margin: 8px 0;
+  border-radius: 8px;
 }
 
 @media (max-width: 700px) {

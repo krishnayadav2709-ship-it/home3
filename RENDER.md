@@ -37,6 +37,21 @@ Use the backend service URL shown by Render, including `https://`. Do not use
 `localhost` in Meta's Callback URL. Select **Verify and save** after entering
 the values.
 
+## Template campaigns and images
+
+The campaign's header choice must match the approved Meta template. Choose
+**No header** for templates without a header, or **Image** for image-header
+templates and upload a JPEG or PNG from your device (up to 5 MB). The backend
+uploads the image to WhatsApp and uses its media ID; a public image URL is not
+required.
+
+If a template has body placeholders, enter their values one per line and in
+order. For named placeholders, enter `name=value` per line. WhatsApp error
+`132012` means the parameters do not match the approved template's header,
+body, or language format. The template's sample image in Meta is only an
+approval example; to send an image, upload the actual image with the campaign.
+Successfully sent and incoming image messages appear in the inbox.
+
 ## Local development
 
 Keep local values in ignored `backend/.env` and `frontend/.env` files. The

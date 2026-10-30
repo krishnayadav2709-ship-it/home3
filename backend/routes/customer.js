@@ -1,4 +1,5 @@
 const express = require("express");
+const axios = require("axios");
 const multer = require("multer");
 const { parse } = require("csv-parse/sync");
 const Customer = require("../models/Customer");
@@ -20,6 +21,72 @@ router.get("/", async (req, res) => {
     res.json(customers);
   } catch {
     res.status(500).json({ error: "Could not load customers" });
+  }
+});
+
+router.get("/:phone/messages/:messageId/media", async (req, res) => {
+  try {
+    const message = await Message.findOne({
+      _id: req.params.messageId,
+      customerPhone: req.params.phone
+    }).lean();
+
+    if (!message || (!message.mediaId && !message.mediaUrl)) {
+      return res.status(404).json({ error: "Message image not found" });
+    }
+
+    if (message.mediaUrl) {
+      return res.redirect(message.mediaUrl);
+    }
+
+    if (
+      !process.env.WHATSAPP_TOKEN ||
+      !/^v\d+\.\d+$/.test(process.env.GRAPH_API_VERSION || "")
+    ) {
+      return res.status(503).json({
+        error: "WhatsApp media credentials are not configured"
+      });
+    }
+
+    const authorization = {
+      Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`
+    };
+    const mediaResponse = await axios.get(
+      `https://graph.facebook.com/${process.env.GRAPH_API_VERSION}/${encodeURIComponent(message.mediaId)}`,
+      { headers: authorization, timeout: 15000 }
+    );
+    const mediaUrl = new URL(mediaResponse.data.url);
+    const allowedHosts = [
+      "graph.facebook.com",
+      "fbcdn.net",
+      "fbsbx.com"
+    ];
+    if (
+      mediaUrl.protocol !== "https:" ||
+      !allowedHosts.some(host =>
+        mediaUrl.hostname === host || mediaUrl.hostname.endsWith(`.${host}`)
+      )
+    ) {
+      return res.status(502).json({ error: "WhatsApp returned an invalid media URL" });
+    }
+
+    const imageResponse = await axios.get(mediaUrl.href, {
+      headers: authorization,
+      responseType: "arraybuffer",
+      maxContentLength: 6 * 1024 * 1024,
+      timeout: 30000
+    });
+    const contentType = imageResponse.headers["content-type"];
+    if (!["image/jpeg", "image/png"].includes(contentType)) {
+      return res.status(415).json({ error: "WhatsApp media is not a supported image" });
+    }
+
+    res.set("Content-Type", contentType);
+    res.set("Cache-Control", "private, max-age=3600");
+    return res.send(imageResponse.data);
+  } catch (error) {
+    console.error("WhatsApp media retrieval failed:", error.message);
+    return res.status(502).json({ error: "Could not load the WhatsApp image" });
   }
 });
 

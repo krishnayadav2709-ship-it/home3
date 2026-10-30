@@ -105,7 +105,8 @@ router.post("/send-template", async (req, res) => {
     templateName,
     language = "en_US",
     headerImageUrl = "",
-    headerImageId = ""
+    headerImageId = "",
+    bodyParameters = []
   } = req.body;
 
   if (!/^[a-z0-9_]+$/.test(templateName || "")) {
@@ -117,6 +118,20 @@ router.post("/send-template", async (req, res) => {
   if (!["en", "en_US", "en_GB", "hi"].includes(language)) {
     return res.status(400).json({
       error: "Select a supported template language"
+    });
+  }
+
+  if (
+    !Array.isArray(bodyParameters) ||
+    bodyParameters.length > 10 ||
+    bodyParameters.some(parameter => {
+      if (typeof parameter !== "string" || !parameter.trim()) return true;
+      const namedParameter = parameter.match(/^[a-zA-Z0-9_]+=([\s\S]*)$/);
+      return Boolean(namedParameter && !namedParameter[1].trim());
+    })
+  ) {
+    return res.status(400).json({
+      error: "Template body values must be provided as up to 10 non-empty text values."
     });
   }
 
@@ -191,20 +206,39 @@ router.post("/send-template", async (req, res) => {
           name: templateName,
           language: { code: language }
         };
+        const components = [];
         if (imageUrl || headerImageId) {
-          template.components = [
-            {
-              type: "header",
-              parameters: [
-                {
-                  type: "image",
-                  image: imageUrl
-                    ? { link: imageUrl.href }
-                    : { id: headerImageId }
-                }
-              ]
-            }
-          ];
+          components.push({
+            type: "header",
+            parameters: [
+              {
+                type: "image",
+                image: imageUrl
+                  ? { link: imageUrl.href }
+                  : { id: headerImageId }
+              }
+            ]
+          });
+        }
+        if (bodyParameters.length) {
+          components.push({
+            type: "body",
+            parameters: bodyParameters.map(value => {
+              const namedParameter = value.match(
+                /^([a-zA-Z0-9_]+)=([\s\S]*)$/
+              );
+              return namedParameter
+                ? {
+                    type: "text",
+                    parameter_name: namedParameter[1],
+                    text: namedParameter[2].trim()
+                  }
+                : { type: "text", text: value.trim() };
+            })
+          });
+        }
+        if (components.length) {
+          template.components = components;
         }
 
         const response = await axios.post(
@@ -231,7 +265,12 @@ router.post("/send-template", async (req, res) => {
           await Message.create({
             customerPhone: customer.phone,
             direction: "outgoing",
-            text: `[Template: ${templateName}]`,
+            text: [
+              `[Template: ${templateName}]`,
+              ...bodyParameters.map(text => text.trim())
+            ].join("\n"),
+            mediaId: headerImageId || "",
+            mediaUrl: imageUrl?.href || "",
             whatsappMessageId: messageId,
             status: "accepted"
           });
